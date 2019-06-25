@@ -10,16 +10,31 @@ fi
 GUID=$1
 REPO=$2
 CLUSTER=$3
+SONAR_URL=http://sonarqube-gpte-hw-cicd.apps.na311.openshift.opentlc.com
 echo "Setting up Jenkins in project ${GUID}-jenkins from Git Repo ${REPO} for Cluster ${CLUSTER}"
 
 # Set up Jenkins with sufficient resources
-# TBD
+oc new-app --template jenkins-persistent \
+   -p ENABLE_OAUTH=false \
+   -p MEMORY_LIMIT=2Gi \
+   -p VOLUME_CAPACITY=4Gi \
+   -p DISABLE_ADMINISTRATIVE_MONITORS=true \
+   -l app=jenkins
 
 # Create custom agent container image with skopeo
-# TBD
+oc new-build  -D $'FROM docker.io/openshift/jenkins-agent-maven-35-centos7:v3.11\n\
+     USER root\nRUN yum -y install skopeo && yum clean all\n\
+     USER 1001' \
+     --name=jenkins-agent-appdev \
+     -n ${GUID}-jenkins \
+     -l role=jenkins-slave
 
 # Create pipeline build config pointing to the ${REPO} with contextDir `openshift-tasks`
-# TBD
+oc process -f pipeline.yml \
+   -p GUID=${GUID} \
+   -p REPO=${REPO} \
+   -p SONAR_URL=${SONAR_URL} \
+   -n ${GUID}-jenkins | oc apply -f - 
 
 # Make sure that Jenkins is fully up and running before proceeding!
 while : ; do
