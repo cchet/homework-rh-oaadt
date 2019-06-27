@@ -7,10 +7,12 @@ if [ "$#" -ne 3 ]; then
     exit 1
 fi
 
-GUID=$1
-REPO=$2
-CLUSTER=$3
-SONAR_URL=http://sonarqube-gpte-hw-cicd.apps.na311.openshift.opentlc.com
+GUID="$1"
+REPO="$2"
+CLUSTER="$3"
+SONAR_URL='http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000'
+NEXUS_RELEASE_URL='http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/releases'
+LABEL_APP='app=homework'
 echo "Setting up Jenkins in project ${GUID}-jenkins from Git Repo ${REPO} for Cluster ${CLUSTER}"
 
 # Set up Jenkins with sufficient resources
@@ -19,22 +21,28 @@ oc new-app --template jenkins-persistent \
    -p MEMORY_LIMIT=2Gi \
    -p VOLUME_CAPACITY=4Gi \
    -p DISABLE_ADMINISTRATIVE_MONITORS=true \
-   -l app=jenkins
+   -l ${LABEL_APP}
 
 # Create custom agent container image with skopeo
 oc new-build  -D $'FROM docker.io/openshift/jenkins-agent-maven-35-centos7:v3.11\n\
-     USER root\nRUN yum -y install skopeo && yum clean all\n\
+     USER root\n\
+     RUN yum -y install skopeo \
+     && yum clean all\n\
      USER 1001' \
      --name=jenkins-agent-appdev \
      -n ${GUID}-jenkins \
-     -l role=jenkins-slave
+     -l role=jenkins-slave \
+     -l ${LABEL_APP}
 
 # Create pipeline build config pointing to the ${REPO} with contextDir `openshift-tasks`
-oc process -f pipeline.yml \
-   -p GUID=${GUID} \
-   -p REPO=${REPO} \
-   -p SONAR_URL=${SONAR_URL} \
-   -n ${GUID}-jenkins | oc apply -f - 
+oc new-build ${REPO} \
+   --strategy pipeline \
+   --context-dir openshift-tasks \
+   --env REPO=${REPO} \
+   --env GUID=${GUID} \
+   --env CLUSTER=${CLUSTER} \
+   --env NEXUS_RELEASE_URL=${NEXUS_RELEASE_URL} \
+   -l ${LABEL_APP}
 
 # Make sure that Jenkins is fully up and running before proceeding!
 while : ; do

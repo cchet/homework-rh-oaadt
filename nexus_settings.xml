@@ -2,9 +2,9 @@
 <settings>
   <mirrors>
     <mirror>
-      <id>Nexus</id>
+      <id>nexus</id>
       <name>Nexus Public Mirror</name>
-      <url>http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/maven-all-public/</url>
+      <url>http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/all-maven-public</url>
       <mirrorOf>*</mirrorOf>
     </mirror>
   </mirrors>
