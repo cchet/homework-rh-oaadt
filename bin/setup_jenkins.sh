@@ -48,6 +48,7 @@ oc new-build ${REPO} \
    --env GUID=${GUID} \
    --env CLUSTER=${CLUSTER} \
    --env NEXUS_RELEASE_URL=${NEXUS_RELEASE_URL} \
+   --env SONAR_URL=${SONAR_URL} \
    -n ${GUID}-jenkins \
    -l ${LABEL_APP}
 

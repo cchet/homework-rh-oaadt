@@ -18,6 +18,9 @@ podTemplate(
     // Define Maven Command to point to the correct
     // settings for our Nexus installation
     def mvnCmd = "mvn -s ../nexus_settings.xml -B "
+    def jenkinsProject = "${GUID}-jenkins"
+    def devProject = "${GUID}-tasks-dev"
+    def prodProject = "${GUID}-tasks-prod"
 
     // Checkout Source Code.
     stage('Checkout Source') {
@@ -77,8 +80,7 @@ podTemplate(
 
         script {
             openshift.withCluster() {
-                openshift.withProject("${devProject}") {
-                    openshift.selector("bc", "tasks").startBuild("--from-file=./target/openshift-tasks.war", "--wait=true")
+                openshift.withProject("${jenkinsProject}") {
                     openshift.tag("tasks:latest", "tasks:${devTag}")
                 }
             }
@@ -96,14 +98,10 @@ podTemplate(
         script {
             openshift.withCluster() {
                 openshift.withProject("${devProject}") {
-                    openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
-                    // Recreate configMap
+                    openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${GUID}-jenkins/tasks:${devTag}")
+                    openshift.set("env", "dc/tasks", "VERSION=${devTag} (tasks-dev)")
                     recreateTasksConfigMap("tasks-config")
-
-                    // Deploy the development application.
                     openshift.selector("dc", "tasks").rollout().latest();
-
-                    // Wait for application to be deployed
                     waitForDeploymentHavingAllReplicasReady("tasks", 20)
                 } 
             }
