@@ -42,7 +42,7 @@ podTemplate(
       stage('Build war') {
         echo "Building version ${devTag}"
 
-        sh "${mvnCMd} clean install -DskipTests=true"
+        sh "${mvnCmd} clean install -DskipTests=true"
       }
 
       // TBD: The next two stages should run in parallel
