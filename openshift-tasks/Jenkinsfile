@@ -163,7 +163,16 @@ podTemplate(
 
       stage('Switch over to new Version') {
         echo "Switching Production application to ${destApp}."
-        // TBD: Execute switch
+        script {
+            openshift.withCluster() {
+                    openshift.withProject("${prodProject}") {
+                        def route = openshift.selector("route/tasks").object()
+                        route.spec.to.name="${destApp}"
+                        openshift.apply(route)
+                    }
+                }                    
+            }
+        }
       }
     }
   }
@@ -177,15 +186,6 @@ def getVersionFromPom(pom) {
   matcher ? matcher[0][1] : null
 }
 
-
-def checkHttpResponseCode(actual, expected) {
-    if (actual != expected) {
-        error "Expected '${expected}' but received '${actual}' response code"
-    } else {
-        echo "Received HTTP-Status: ${actual}"
-    }
-}
-
 def waitForDeploymentHavingAllReplicasReady(dc, maxTries) {
     echo "Waiting for DeploymentConfig '${dc}' to have all ReplicationControllers ready"
     def dc_version =  openshift.selector("dc", "${dc}").object().status.latestVersion
@@ -197,9 +197,4 @@ def waitForDeploymentHavingAllReplicasReady(dc, maxTries) {
         sleep 5
         rc_prod = openshift.selector("rc", rc_name).object()
     }
-}
-
-def recreateTasksConfigMap(configMapName) {
-    openshift.selector('configmap', "${configMapName}").delete()
-    openshift.create('configmap', "${configMapName}", '--from-file=./configuration/application-users.properties', '--from-file=./configuration/application-roles.properties' )
 }
