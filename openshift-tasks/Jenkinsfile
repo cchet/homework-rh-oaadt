@@ -46,20 +46,22 @@ podTemplate(
       }
 
       // TBD: The next two stages should run in parallel
-      parallel {
-        // Using Maven run the unit tests
-        stage('Unit Tests') {
-          echo "Running Unit Tests"
+      stage('Unit Tests/Code Analysis') {
+        parallel (
+          // Using Maven run the unit tests
+          'unit-tests': {
+              echo "Running Unit Tests"
 
-          sh "${mvnCmd} test"
-        }
+              sh "${mvnCmd} test"
+          },
 
-        // Using Maven to call SonarQube for Code Analysis
-        stage('Code Analysis') {
-          echo "Running Code Analysis"
+          // Using Maven to call SonarQube for Code Analysis
+          'code-analysis': {
+              echo "Running Code Analysis"
 
-          sh "${mvnCmd} sonar:sonar -DskipTests=true -Dsonar.host.url=${SONAR_URL}"
-        }
+              sh "${mvnCmd} sonar:sonar -DskipTests=true -Dsonar.host.url=${SONAR_URL}"
+          }
+        )
       }
 
       // Publish the built war file to Nexus
@@ -73,7 +75,14 @@ podTemplate(
       stage('Build and Tag OpenShift Image') {
         echo "Building OpenShift container image tasks:${devTag}"
 
-        // TBD: Build Image, tag Image
+        script {
+            openshift.withCluster() {
+                openshift.withProject("${devProject}") {
+                    openshift.selector("bc", "tasks").startBuild("--from-file=./target/openshift-tasks.war", "--wait=true")
+                    openshift.tag("tasks:latest", "tasks:${devTag}")
+                }
+            }
+        }
       }
 
       // Deploy the built image to the Development Environment.
@@ -83,6 +92,22 @@ podTemplate(
         // TBD: Deploy to development Project
         //      Set Image, Set VERSION
         //      Make sure the application is running and ready before proceeding
+        
+        script {
+            openshift.withCluster() {
+                openshift.withProject("${devProject}") {
+                    openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
+                    // Recreate configMap
+                    recreateTasksConfigMap("tasks-config")
+
+                    // Deploy the development application.
+                    openshift.selector("dc", "tasks").rollout().latest();
+
+                    // Wait for application to be deployed
+                    waitForDeploymentHavingAllReplicasReady("tasks", 20)
+                } 
+            }
+        }
       }
 
       // Copy Image to Nexus container registry
@@ -120,4 +145,31 @@ podTemplate(
 def getVersionFromPom(pom) {
   def matcher = readFile(pom) =~ '<version>(.+)</version>'
   matcher ? matcher[0][1] : null
+}
+
+
+def checkHttpResponseCode(actual, expected) {
+    if (actual != expected) {
+        error "Expected '${expected}' but received '${actual}' response code"
+    } else {
+        echo "Received HTTP-Status: ${actual}"
+    }
+}
+
+def waitForDeploymentHavingAllReplicasReady(dc, maxTries) {
+    echo "Waiting for DeploymentConfig '${dc}' to have all ReplicationControllers ready"
+    def dc_version =  openshift.selector("dc", "${dc}").object().status.latestVersion
+    def rc_name = "${dc}-${dc_version}"
+    def rc_prod = openshift.selector("rc", rc_name).object()
+    def count = 0
+    while (rc_prod.spec.replicas != rc_prod.status.readyReplicas && count < maxTries) {
+        count++
+        sleep 5
+        rc_prod = openshift.selector("rc", rc_name).object()
+    }
+}
+
+def recreateTasksConfigMap(configMapName) {
+    openshift.selector('configmap', "${configMapName}").delete()
+    openshift.create('configmap', "${configMapName}", '--from-file=./configuration/application-users.properties', '--from-file=./configuration/application-roles.properties' )
 }
