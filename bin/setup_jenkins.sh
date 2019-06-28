@@ -12,6 +12,7 @@ REPO="$2"
 CLUSTER="$3"
 SONAR_URL='http://sonarqube.gpte-hw-cicd.svc:9000'
 NEXUS_RELEASE_URL='http://nexus3.gpte-hw-cicd.svc:8081/repository/releases'
+DOCKER_NEXUS_URL='docker://nexus-registry.gpte-hw-cicd.svc.cluster.local:5000'
 LABEL_APP='app=homework'
 echo "Setting up Jenkins in project ${GUID}-jenkins from Git Repo ${REPO} for Cluster ${CLUSTER}"
 
@@ -49,6 +50,7 @@ oc new-build ${REPO} \
    --env CLUSTER=${CLUSTER} \
    --env NEXUS_RELEASE_URL=${NEXUS_RELEASE_URL} \
    --env SONAR_URL=${SONAR_URL} \
+   --env DOCKER_NEXUS_URL=${DOCKER_NEXUS_URL} \
    -n ${GUID}-jenkins \
    -l ${LABEL_APP}
 
