@@ -21,7 +21,7 @@ podTemplate(
 
     // Checkout Source Code.
     stage('Checkout Source') {
-      git url: 'https://gogs.8f92-gogs.svc:3000/CICDLabs/openshift-tasks-private.git', branch: 'master'
+      git url: "${REPO}", branch: 'master'
     }
 
     // Build the Tasks Service
