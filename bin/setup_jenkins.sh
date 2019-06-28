@@ -10,8 +10,8 @@ fi
 GUID="$1"
 REPO="$2"
 CLUSTER="$3"
-SONAR_URL='http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000'
-NEXUS_RELEASE_URL='http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/releases'
+SONAR_URL='http://sonarqube.gpte-hw-cicd.svc:9000'
+NEXUS_RELEASE_URL='http://nexus3.gpte-hw-cicd.svc:8081/repository/releases'
 LABEL_APP='app=homework'
 echo "Setting up Jenkins in project ${GUID}-jenkins from Git Repo ${REPO} for Cluster ${CLUSTER}"
 
