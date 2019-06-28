@@ -152,7 +152,7 @@ podTemplate(
               dc.spec.template.spec.containers[0].image="docker-registry.default.svc:5000/${prodProject}/tasks:${prodTag}"
               openshift.apply(dc)
               //openshift.set("env", "dc/${destApp}", "VERSION=${appVersion}")
-              sh "oc set env dc/tasks VERSION='${appVersion}' -n ${prodProject}"      
+              sh "oc set env ${destApp} VERSION='${appVersion}' -n ${prodProject}"      
               openshift.selector("dc", "${destApp}").rollout().latest();
 
               // Wait for application to be deployed
