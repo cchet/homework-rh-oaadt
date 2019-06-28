@@ -21,7 +21,7 @@ podTemplate(
 
     // Checkout Source Code.
     stage('Checkout Source') {
-      checkout scm
+      git url: 'https://gogs.8f92-gogs.svc:3000/CICDLabs/openshift-tasks-private.git', branch: 'master'
     }
 
     // Build the Tasks Service
@@ -58,7 +58,7 @@ podTemplate(
         stage('Code Analysis') {
           echo "Running Code Analysis"
 
-          sh "${mvnCmd} sonar:sonar -Dsonar.host.url=${SONAR_URL}"
+          sh "${mvnCmd} sonar:sonar -DskipTests=true -Dsonar.host.url=${SONAR_URL}"
         }
       }
 
@@ -66,7 +66,7 @@ podTemplate(
       stage('Publish to Nexus') {
         echo "Publish to Nexus"
 
-        sh "${mvnCmd} deploy -DaltDeploymentRepository=nexus::default::${NEXUS_RELEASE_URL}"
+        sh "${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::${NEXUS_RELEASE_URL}"
       }
 
       // Build the OpenShift Image in OpenShift and tag it.

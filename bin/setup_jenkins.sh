@@ -15,12 +15,18 @@ NEXUS_RELEASE_URL='http://nexus3.gpte-hw-cicd.svc:8081/repository/releases'
 LABEL_APP='app=homework'
 echo "Setting up Jenkins in project ${GUID}-jenkins from Git Repo ${REPO} for Cluster ${CLUSTER}"
 
+# Cleanup old resources
+oc delete all -l ${LABEL_APP}
+oc delete sa -l ${LABEL_APP}
+oc delete rolebindings -l ${LABEL_APP}
+
 # Set up Jenkins with sufficient resources
-oc new-app --template jenkins-persistent \
+# for persistent  -p VOLUME_CAPACITY=1Gi \
+oc new-app --template jenkins-ephemeral \
    -p ENABLE_OAUTH=false \
-   -p MEMORY_LIMIT=2Gi \
-   -p VOLUME_CAPACITY=4Gi \
+   -p MEMORY_LIMIT=3Gi \
    -p DISABLE_ADMINISTRATIVE_MONITORS=true \
+   -n ${GUID}-jenkins \
    -l ${LABEL_APP}
 
 # Create custom agent container image with skopeo
@@ -42,6 +48,7 @@ oc new-build ${REPO} \
    --env GUID=${GUID} \
    --env CLUSTER=${CLUSTER} \
    --env NEXUS_RELEASE_URL=${NEXUS_RELEASE_URL} \
+   -n ${GUID}-jenkins \
    -l ${LABEL_APP}
 
 # Make sure that Jenkins is fully up and running before proceeding!
