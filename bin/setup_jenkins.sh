@@ -17,9 +17,9 @@ LABEL_APP='app=homework'
 echo "Setting up Jenkins in project ${GUID}-jenkins from Git Repo ${REPO} for Cluster ${CLUSTER}"
 
 # Cleanup old resources
-oc delete all -l ${LABEL_APP}
-oc delete sa -l ${LABEL_APP}
-oc delete rolebindings -l ${LABEL_APP}
+#oc delete all -l ${LABEL_APP}
+#oc delete sa -l ${LABEL_APP}
+#oc delete rolebindings -l ${LABEL_APP}
 
 # Set up Jenkins with sufficient resources
 # for persistent  -p VOLUME_CAPACITY=1Gi \
