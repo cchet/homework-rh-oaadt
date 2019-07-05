@@ -36,7 +36,7 @@ podTemplate(
       def version = getVersionFromPom("pom.xml")
 
       // TBD Set the tag for the development image: version + build number
-      def devTag  = "${version}-${BUILD_ID}"
+      def devTag  = "${version}-${currentBuild.number}"
       // Set the tag for the production image: version
       def prodTag = "${version}"
 
@@ -134,15 +134,18 @@ podTemplate(
       // -------------------------------------
       def destApp   = "tasks-green"
       def activeApp = ""
-      def appVersion = "${prodTag} (tasks-green)"
 
       stage('Blue/Green Production Deployment') {
         openshift.withCluster() {
           openshift.withProject("${prodProject}") {
+            
+              // Set Version
+              openshift.set("env", "dc/tasks-blue", "VERSION='${prodTag} tasks-blue'")
+              openshift.set("env", "dc/tasks-green", "VERSION='${prodTag} tasks-green'")
+
               activeApp = openshift.selector("route", "tasks").object().spec.to.name
               if (activeApp == "tasks-green") {
                   destApp = "tasks-blue"
-                  appVersion = "${prodTag} (tasks-green)"
               }
               echo "Active Application:      " + activeApp
               echo "Destination Application: " + destApp
@@ -150,9 +153,7 @@ podTemplate(
               // Update the Image on the Production Deployment Config
               def dc = openshift.selector("dc/${destApp}").object()
               dc.spec.template.spec.containers[0].image="docker-registry.default.svc:5000/${prodProject}/tasks:${prodTag}"
-              openshift.apply(dc)
-              //openshift.set("env", "dc/${destApp}", "VERSION=${appVersion}")
-              sh "oc set env dc/${destApp} VERSION='${appVersion}' -n ${prodProject}"      
+              openshift.apply(dc)    
               openshift.selector("dc", "${destApp}").rollout().latest();
 
               // Wait for application to be deployed
