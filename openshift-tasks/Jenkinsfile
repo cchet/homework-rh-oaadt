@@ -102,7 +102,7 @@ podTemplate(
                     openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
                     openshift.set("env", "dc/tasks", "VERSION='${devTag} tasks-dev'")
                     openshift.selector("dc", "tasks").rollout().latest();
-                    waitForDeploymentHavingAllReplicasReady("tasks", 20)
+                    waitForDeploymentHavingAllReplicasReady("tasks", 40)
                 } 
             }
         }
@@ -122,8 +122,8 @@ podTemplate(
         script {
             // TBD: Tag the built image with the production tag.
             openshift.withCluster() {
-                openshift.withProject("${prodProject}") {
-                    openshift.tag("${devProject}/tasks:${devTag}", "${prodProject}/tasks:${prodTag}")
+                openshift.withProject("${devProject}") {
+                    openshift.tag("${devProject}/tasks:${devTag}", "${devProject}/tasks:${prodTag}")
                 }
             }
         }
@@ -151,12 +151,12 @@ podTemplate(
 
               // Update the Image on the Production Deployment Config
               def dc = openshift.selector("dc/${destApp}").object()
-              dc.spec.template.spec.containers[0].image="docker-registry.default.svc:5000/${prodProject}/tasks:${prodTag}"
+              dc.spec.template.spec.containers[0].image="docker-registry.default.svc:5000/${devProject}/tasks:${prodTag}"
               openshift.apply(dc)    
               openshift.selector("dc", "${destApp}").rollout().latest();
 
               // Wait for application to be deployed
-              waitForDeploymentHavingAllReplicasReady("${destApp}", 20)
+              waitForDeploymentHavingAllReplicasReady("${destApp}", 40)
           }
         }
       }
@@ -166,9 +166,7 @@ podTemplate(
         script {
             openshift.withCluster() {
                     openshift.withProject("${prodProject}") {
-                        def route = openshift.selector("route/tasks").object()
-                        route.spec.to.name="${destApp}"
-                        openshift.apply(route)
+                    openshift.set("route-backends", "tasks", "${destApp}=100", "${activeApp}=0")
                     }
                 }                    
             }
